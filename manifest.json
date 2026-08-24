@@ -1,0 +1,38 @@
+{
+  "name": "HP Search",
+  "description": "Lookup HP devices to solve various user problems:  Connectivity, disassembly, Specifications, spares and also fix Khoros spoilers",
+  "version": "2.0",
+  "manifest_version": 3,
+  "permissions": [ "contextMenus", "storage", "clipboardRead", "clipboardWrite", "activeTab", "scripting", "tabs" ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {},
+  "icons": {
+    "16": "hp16.png",
+    "48": "hp48.png",
+    "128": "hp128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [ "inject.js" ],
+      "matches": [ "https://virtualagent.hpcloud.hp.com/*" ]
+    }
+  ],
+  "host_permissions": [
+    "https://virtualagent.hpcloud.hp.com/*",
+    "https://d34z73bbtpzgej.cloudfront.net/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://virtualagent.hpcloud.hp.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
