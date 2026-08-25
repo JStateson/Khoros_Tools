@@ -1,7 +1,7 @@
 {
-  "name": "HP Search",
-  "description": "Lookup HP devices to solve various user problems:  Connectivity, disassembly, Specifications, spares and also fix Khoros spoilers",
-  "version": "2.0",
+  "name": "Khoros Tools",
+  "description": "Fix Khoros spoilers, Clean unfriendly HTML for Khoros, search using Khoros SQL, Get advice from HP's virtual agent",
+  "version": "1.0",
   "manifest_version": 3,
   "permissions": [ "contextMenus", "storage", "clipboardRead", "clipboardWrite", "activeTab", "scripting", "tabs" ],
   "background": {
@@ -21,8 +21,7 @@
     }
   ],
   "host_permissions": [
-    "https://virtualagent.hpcloud.hp.com/*",
-    "https://d34z73bbtpzgej.cloudfront.net/*"
+    "https://virtualagent.hpcloud.hp.com/*"
   ],
   "content_scripts": [
     {
