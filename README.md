@@ -20,4 +20,4 @@
 3. Enable the extension and be sure to disable developer mode***.
 4. Select the text you want to search and right-click within the selection to view to get the desired lookup.
 5. Tested on Chrome and Edge in Windows 11 and looks like this
-6. ![alt text](https://stateson.net/images/HPsearch-2extension.png)
+6. ![alt text](https://stateson.net/images/KhorosTools.png)
