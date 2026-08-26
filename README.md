@@ -21,3 +21,20 @@
 4. Select the text you want to search and right-click within the selection to view to get the desired lookup.
 5. Tested on Chrome and Edge in Windows 11 and looks like this
 6. ![alt text](https://stateson.net/images/KhorosTools.png)
+
+Explanation of the two search functions and the difference from the existing Khoros search
+1.  The built in community search
+	1. You enter "call of duty" including the quotation marks
+	2. You select your name so that the search is limited to your posts
+	3. Results:  You may have 8 threads. 3 you might have originated and 5 you responded to.
+	4. Analysis: Only phrases found in the body of the text are being reported.
+	
+2.	The new Khoros Tools function Find this phrase
+	1. You highlight a phrase such as **Call Of Duty** and select the Find This Phrase
+	2. You are logged in as your name is shown top right of display
+	3. Results: You may have 14 threads. 3 you originated.  11 you responded to.  The extra 6 are posts where you did not quote that phrase but the author did.
+	4. Analysis: Phrases in the title are reported in addition to the subject.
+	
+3.	The new Khoros Tools function Find all my answers
+	1. Same as find my phrase but will find your response to a post **where the phrase is in the body of the original post but missing from any title**.
+	THIS IS NOT COMPLETED.  Currently the "Find this phrase" part is not combined yet
