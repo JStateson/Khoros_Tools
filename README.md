@@ -22,9 +22,11 @@
 5. Tested on Chrome and Edge in Windows 11 and looks like this
 6. ![alt text](https://stateson.net/images/KhorosTools.png)
 
+
 Explanation of the three search functions
-1	The new Khoros Tools function **Find my phrase or words**
-	1. You highlight a phrase such as  and select the **Find my phrase or words**
+
+1.	The new Khoros Tools function **Find my phrase or words**
+	1. 	You highlight a phrase such as  and select the **Find my phrase or words**
 	2. You are logged in, as your name is shown top right of display
 	3. Results: You may have 50 threads. Some you originated.  Others you responded to.
 	4. If the phrase has quotes such as "Call Of Duty" or 'Call Of Duty' then only exact matches will be found.
