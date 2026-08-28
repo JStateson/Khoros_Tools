@@ -52,14 +52,14 @@ chrome.runtime.onInstalled.addListener(async () => {
         contexts: ["all"]
     });
     chrome.contextMenus.create({
-        id: "FindMyAnswers",
-        title: "Find all my answers",
+        id: "FindPhrase",
+        title: "Find my phrase or words",
         type: "normal",
         contexts: ['selection']
     });
     chrome.contextMenus.create({
-        id: "FindThisPhrase",
-        title: "Find This Phrase",
+        id: "FindReplies",
+        title: "Replies this last week",
         type: "normal",
         contexts: ['selection']
     });
@@ -90,6 +90,32 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 
+function ParseKhorosSearchText(searchText) {
+
+    searchText = searchText.trim();
+
+    let isExactPhrase = false;
+
+    if (searchText.length >= 2) {
+
+        const first = searchText[0];
+        const last = searchText[searchText.length - 1];
+
+        if (
+            (first === '"' && last === '"') ||
+            (first === "'" && last === "'")
+        ) {
+            isExactPhrase = true;
+            searchText = searchText.slice(1, -1).trim();
+        }
+    }
+
+    return {
+        isExactPhrase: isExactPhrase,
+        searchText: searchText
+    };
+}
+
 function GetKhorosUserId() {
     const html = document.documentElement.innerHTML;
 
@@ -104,19 +130,20 @@ function GetKhorosUserId() {
 }
 
 
-
-async function SearchKhorosApi(searchText) {
+async function SearchMyPosts(searchText, userId) {
 
     const query =
-        "SELECT id, view_href, author, subject, body, conversation " +
+        "SELECT id, view_href, subject, author, topic, conversation " +
         "FROM messages " +
-        "WHERE depth = 0 " +
-        "AND body MATCHES '" + searchText + "' " +
+        "WHERE author.id = '" + userId + "' " +
+        "AND (body MATCHES '" + searchText + "' OR subject MATCHES '" + searchText + "')" +
         "LIMIT 20";
 
     const url =
         "https://h30434.www3.hp.com/api/2.0/search?q=" +
         encodeURIComponent(query);
+
+    //console.log("search my posts ", url);
 
     const response = await fetch(url);
 
@@ -128,6 +155,7 @@ async function SearchKhorosApi(searchText) {
 
     return result?.data?.items ?? [];
 }
+
 
 async function GetMyReplies(topicId, userId) {
 
@@ -152,9 +180,72 @@ async function GetMyReplies(topicId, userId) {
     return result?.data?.items ?? [];
 }
 
-async function FindMyRepliesToPhrase(searchText, userId) {
 
-    const topics = await SearchKhorosApi(searchText);
+async function SearchKhorosApi(searchText, rangeTime) {
+
+    let query =
+        "SELECT id, view_href, author, subject, body, conversation " +
+        "FROM messages " +
+        "WHERE depth = 0 " +
+        "AND body MATCHES '" + searchText + "' ";
+
+    if (rangeTime != KhorosSearchRange.ALL) {
+
+        const now = new Date();
+        let startDate = new Date(now);
+
+        switch (rangeTime) {
+
+            case KhorosSearchRange.DAY:
+                startDate.setDate(startDate.getDate() - 1);
+                break;
+
+            case KhorosSearchRange.WEEK:
+                startDate.setDate(startDate.getDate() - 7);
+                break;
+
+            case KhorosSearchRange.MONTH:
+                startDate.setMonth(startDate.getMonth() - 1);
+                break;
+
+            case KhorosSearchRange.YEAR:
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                break;
+
+            default:
+                throw new Error("Invalid Khoros search range: " + rangeTime);
+        }
+
+        const toISO = (d) =>
+            d.toISOString().replace('.000Z', '-00:00');
+
+        query +=
+            "AND post_time > " + toISO(startDate) + " " +
+            "AND post_time < " + toISO(now) + " ";
+    }
+
+    query +=
+        "ORDER BY post_time DESC " +
+        "LIMIT 20";
+
+    const url =
+        "https://h30434.www3.hp.com/api/2.0/search?q=" +
+        encodeURIComponent(query);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Khoros API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    return result?.data?.items ?? [];
+}
+
+async function FindMyRepliesToPhrase(searchText, userId, krange) {
+
+    const topics = await SearchKhorosApi(searchText, krange);
     const results = [];
 
     for (const topic of topics) {
@@ -174,6 +265,92 @@ async function FindMyRepliesToPhrase(searchText, userId) {
     return results;
 }
 
+async function SearchKhorosPhraseV1(searchText, userId, rangeTime) {
+
+    let url =
+        "https://h30434.www3.hp.com/restapi/vc/search/messages" +
+        "?phrase=" + encodeURIComponent(searchText) +
+        "&author_id=" + encodeURIComponent(userId) +
+        "&include_forums=true";
+
+    if (rangeTime) {
+        url += "&dateRangeType=rangeTime" +
+            "&rangeTime=" + encodeURIComponent(rangeTime);
+    }
+    //console.log("phrase url ", url);
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Khoros V1 API error: ${response.status}`);
+    }
+
+    const xmlText = await response.text();
+
+    const messages = [];
+    const messageRegex = /<message\b[\s\S]*?<\/message>/g;
+    const messageBlocks = xmlText.match(messageRegex) ?? [];
+
+    for (const block of messageBlocks) {
+
+        const idMatch = block.match(
+            /<id\b[^>]*>(.*?)<\/id>/
+        );
+
+        const subjectMatch = block.match(
+            /<subject\b[^>]*>([\s\S]*?)<\/subject>/
+        );
+
+        if (!idMatch) {
+            continue;
+        }
+
+        messages.push({
+            id: idMatch[1],
+            subject: subjectMatch?.[1] ?? "",
+            source: "v1"
+        });
+    }
+
+    return messages;
+}
+
+async function GetKhorosMessage(messageId) {
+
+    const query =
+        "SELECT id, view_href, subject, topic, author, conversation " +
+        "FROM messages " +
+        "WHERE id = '" + messageId + "'";
+
+    const url =
+        "https://h30434.www3.hp.com/api/2.0/search?q=" +
+        encodeURIComponent(query);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Khoros API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    return result?.data?.items?.[0] ?? null;
+}
+
+async function ConvertV1Results(v1Results) {
+
+    const results = [];
+
+    for (const item of v1Results) {
+
+        const message = await GetKhorosMessage(item.id);
+
+        if (message) {
+            results.push(message);
+        }
+    }
+
+    return results;
+}
 
 
 // searchType: 1 = find these words
@@ -192,13 +369,13 @@ function BuildKhorosAuthorSearch(searchText, userId, searchType, rangeTime) {
     }
 
 
-    if (searchType === 1) {
+    if (searchType === 2) {
         // Find these words
-        const encodedSearch = encodeURIComponent(searchText).replace(/%20/g, "+");
+        const encodedSearch = encodeURIComponent(searchText).replace(/%20/g, "%2B");
 
         url += "&q=" + encodedSearch;
     }
-    if (searchType === 2) {
+    if (searchType === 1) {
         // Find this exact phrase
         url += "&phrase=" + encodeURIComponent(searchText);
     }
@@ -227,8 +404,6 @@ const KhorosSearchRange = {
 async function GetAppTab() {
     const urlToFind = VirtualAgentUrl;
 
-    console.log("HP_Search: GetAppTab entered1");
-
     const tabs = await chrome.tabs.query({});
 
     const existingTab = tabs.find(tab =>
@@ -236,36 +411,33 @@ async function GetAppTab() {
     );
 
     if (existingTab) {
-        console.log("HP_Search:SupportGPT old tab ID:", existingTab.id);
+        //console.log("HP_Search:SupportGPT old tab ID:", existingTab.id);
         return existingTab;
     }
-
-    console.log("GetAppTab entered2");
-
     const tab = await chrome.tabs.create({
         url: urlToFind
     });
 
-    console.log("HP_Search: SupportGPT new tab ID:", tab.id);
+    //console.log("HP_Search: SupportGPT new tab ID:", tab.id);
 
     return tab;
 }
 
 async function xWaitForSupportGPTButton(tabId) {
-    console.log("HP_Search: Waiting for SupportGPT button in tab", tabId);
+    //console.log("HP_Search: Waiting for SupportGPT button in tab", tabId);
 
     const response = await chrome.tabs.sendMessage(tabId, {
         action: "startSupportGPT"
     });
 
-    console.log("HP_Search response:", response);
-
+    /*
     if (response?.success) {
         console.log("SupportGPT started");
     }
     else {
         console.log("SupportGPT could not be started");
     }
+    */
 }
 
 
@@ -292,20 +464,20 @@ async function WaitForSupportGPTButton(tabId) {
             });
 
             if (result[0]?.result === true) {
-                console.log("HP_Search: SupportGPT button clicked");
+                //console.log("HP_Search: SupportGPT button clicked");
                 return true;
             }
         }
         catch (e) {
             // tab may have closed or page not ready
-            console.log("HP_Search: injection failed", e.message);
+            //console.log("HP_Search: injection failed", e.message);
             return false;
         }
 
         await new Promise(resolve => setTimeout(resolve, 250));
     }
 
-    console.log("HP_Search: SupportGPT button timeout");
+    //console.log("HP_Search: SupportGPT button timeout");
     return false;
 }
 
@@ -345,7 +517,7 @@ async function StartSupportGPT() {
         active: false
     });
 
-    console.log("HP_Search: Created new SupportGPT tab:", newTab.id);
+    //console.log("HP_Search: Created new SupportGPT tab:", newTab.id);
 
     await chrome.storage.local.set({
         supportGPTTabId: newTab.id
@@ -365,18 +537,18 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
     if (message.type === "HP_ANSWER") {
 
-        console.log("HP_Search: Received HP answer:");
+        //console.log("HP_Search: Received HP answer:");
         //console.log(message.activity);
         RunSupportGPT(message.activity);
     }
 
     if (message.action === "contentReady") {
-        console.log("HP_Search: content ready in tab", sender.tab.id);
+        //console.log("HP_Search: content ready in tab", sender.tab.id);
         await xWaitForSupportGPTButton(sender.tab.id);
     }
 
     if (message.type === "GET_HP_ACTIVITY") {
-        console.log("HP_Search: getting last activity");
+        //console.log("HP_Search: getting last activity");
         sendResponse({
             activity: lastActivity
         });
@@ -386,7 +558,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
         const saved = await chrome.storage.local.get("hpForumTabId");
         const hpTabId = saved.hpForumTabId;
-        console.log("HP_Search: SupportGPT HTML processed Forum ID ", hpTabId);
+        //console.log("HP_Search: SupportGPT HTML processed Forum ID ", hpTabId);
         const html = message.html;
 
         await chrome.scripting.executeScript({
@@ -409,7 +581,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 "Chat with HP's SupportGPT for AI Answers");
 
         if (btn) {
-            console.log("HP_Search: BK clicking SupportGPT");
+            //console.log("HP_Search: BK clicking SupportGPT");
             btn.click();
         }
         else {
@@ -888,14 +1060,11 @@ async function CopyKhorosHtml() {
             })
         ]);
 
-        console.log("CopyKhorosHtml: Clipboard updated");
+        //console.log("CopyKhorosHtml: Clipboard updated");
     }
     catch (error) {
 
-        console.error(
-            "CopyKhorosHtml: Clipboard write failed:",
-            error
-        );
+        console.error("CopyKhorosHtml: Clipboard write failed:",error);
     }
 }
 
@@ -927,13 +1096,18 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
     }
 
     let SearchType = 0;
-    if (item.menuItemId == "FindMyAnswers")
+    if (item.menuItemId == "FindPhrase")
         SearchType = 1;
-    else if (item.menuItemId == "FindThisPhrase")
-        SearchType = 2;
+    else if (item.menuItemId == "FindReplies")
+        SearchType = 3;
+
+
 
     if (SearchType > 0) {
-        const searchText = item.selectionText;
+        const parsed = ParseKhorosSearchText(item.selectionText);
+        if (!parsed.isExactPhrase)
+            SearchType++;
+        const searchText = parsed.searchText;
         const result_id = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: GetKhorosUserId
@@ -941,23 +1115,94 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
         const userId = result_id?.[0]?.result ?? null;
         let results = [];
         let resultsUrl = [];
-        switch (SearchType){
-            case 1:
-                results = await FindMyRepliesToPhrase(searchText, userId);
-                //console.log("My matching replies:", results);
-                await chrome.storage.session.set({
-                    khorosSearchResults: {
-                        searchText: searchText,
-                        results: results
-                    }
+
+        if (SearchType < 3 && !parsed.isExactPhrase) {
+
+            if (true) {
+                resultsUrl = BuildKhorosAuthorSearch(searchText, userId, SearchType, KhorosSearchRange.ALL);
+                //console.log("Build url ", resultsUrl);
+                chrome.tabs.create({
+                    url: resultsUrl,
+                    windowId: id,
+                    index: tab.index + 1
                 });
+                return;
+            }
 
-                resultsUrl = chrome.runtime.getURL("searchResults.html");
-                break;
-
-            case 2:
-                resultsUrl = BuildKhorosAuthorSearch(searchText, userId, 2, KhorosSearchRange.ALL);
+            results = await SearchMyPosts(searchText, userId);
+            
+            //console.log("My matching replies:", results);
+            await chrome.storage.session.set({
+                khorosSearchResults: {
+                    searchText: searchText,
+                    searchType: 1,
+                    results: results
+                }
+            });
+            resultsUrl = chrome.runtime.getURL("searchResults.html");
+            //console.log("Build url ", resultsUrl);
+            chrome.tabs.create({
+                url: resultsUrl,
+                windowId: id,
+                index: tab.index + 1
+            });
+            return;
         }
+        let kRange = KhorosSearchRange.ALL;
+        if (SearchType > 2)
+            kRange = KhorosSearchRange.WEEK;
+        const v1Results = await SearchKhorosPhraseV1(
+            searchText,
+            userId,
+            kRange
+        );
+
+        //console.log("V1 results:", v1Results);
+
+        const v1Messages = await ConvertV1Results(v1Results);
+
+        //console.log("V1 converted messages:", v1Messages);
+
+        const v2Results =
+            await FindMyRepliesToPhrase(searchText, userId, kRange);
+
+        //console.log("V2 results:", v2Results);
+
+        const combinedResults = [...v1Messages];
+
+        const seenIds = new Set(
+            combinedResults.map(message => message.id)
+        );
+
+        for (const item of v2Results) {
+
+            const message = item.message;
+
+            if (!message?.id) {
+                continue;
+            }
+
+            if (!seenIds.has(message.id)) {
+                combinedResults.push(message);
+                seenIds.add(message.id);
+            }
+        }
+
+        //console.log("Combined unique messages:", combinedResults);
+
+        await chrome.storage.session.set({
+            khorosSearchResults: {
+                searchText: searchText,
+                searchType: 1,
+                searchRange: kRange,
+                results: combinedResults
+            }
+        });
+
+        resultsUrl =
+            chrome.runtime.getURL("searchResults.html");
+
+
         chrome.tabs.create({
             url: resultsUrl,
             windowId: id,
@@ -965,6 +1210,8 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
         });
 
         return;
+
+
     }
 
     if (item.menuItemId == "CitRem") {
@@ -999,9 +1246,9 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
         if (!supportGPTActive) {
             return;
         }
-        console.log("HP_SEARCH current forum tab ", tab.id);
+        //console.log("HP_SEARCH current forum tab ", tab.id);
         const appTab = await GetAppTab();
-        console.log("HP_SEARCH appTab ID:", appTab.id);
+        //console.log("HP_SEARCH appTab ID:", appTab.id);
 
 
         await chrome.storage.local.set({
