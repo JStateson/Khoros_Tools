@@ -834,6 +834,9 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     // ---------------------------------------------------------
     // 5. Remove Google wrapper elements but keep contents
     // ---------------------------------------------------------
+
+    /*
+
     html = html.replace(
         /<div\b[^>]*>/gi,
         ""
@@ -843,6 +846,16 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
         /<\/div>/gi,
         "<br>"
     );
+
+    */
+
+    // removed the above two and trying the below to fix double space problems
+
+    html = html.replace(
+        /<\/?div\b[^>]*>/gi,
+        ""
+    );
+
 
     html = html.replace(
         /<\/?(?:span|mark)\b[^>]*>/gi,
@@ -894,6 +907,19 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
 
     body.innerHTML = html;
 
+/*
+    console.log("AFTER innerHTML:");
+    console.log(body.innerHTML);
+
+    body.querySelectorAll("li").forEach((li, i) => {
+        console.log(
+            "LI " + i,
+            "HTML:", li.outerHTML,
+            "PARENT:", li.parentElement.outerHTML
+        );
+    });
+*/
+
     // switch to DOM manipulation for the rest of the cleanup
     body.querySelectorAll("a").forEach(a => {
 
@@ -912,6 +938,7 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     // ---------------------------------------------------------
     // Remove empty bullet/list items
     // ---------------------------------------------------------
+
     body.querySelectorAll("li").forEach(li => {
 
         // Remove whitespace, including &nbsp;
@@ -927,6 +954,7 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
             list.remove();
         }
     });
+
 
 
     // Tell TinyMCE/Khoros that the content has changed
