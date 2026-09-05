@@ -137,6 +137,7 @@ async function SearchMyPosts(searchText, userId) {
         "FROM messages " +
         "WHERE author.id = '" + userId + "' " +
         "AND (body MATCHES '" + searchText + "' OR subject MATCHES '" + searchText + "')" +
+        "ORDER BY post_time DESC " +
         "LIMIT 20";
 
     const url =
@@ -160,72 +161,11 @@ async function SearchMyPosts(searchText, userId) {
 async function GetMyReplies(topicId, userId) {
 
     const query =
-        "SELECT id, view_href, subject, author " +
+        "SELECT id, view_href, subject, author, post_time " +
         "FROM messages " +
         "WHERE topic.id = '" + topicId + "' " +
-        "AND author.id = '" + userId + "'";
-
-    const url =
-        "https://h30434.www3.hp.com/api/2.0/search?q=" +
-        encodeURIComponent(query);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error(`Khoros API error: ${response.status}`);
-    }
-
-    const result = await response.json();
-
-    return result?.data?.items ?? [];
-}
-
-
-async function SearchKhorosApi(searchText, rangeTime) {
-
-    let query =
-        "SELECT id, view_href, author, subject, body, conversation " +
-        "FROM messages " +
-        "WHERE depth = 0 " +
-        "AND body MATCHES '" + searchText + "' ";
-
-    if (rangeTime != KhorosSearchRange.ALL) {
-
-        const now = new Date();
-        let startDate = new Date(now);
-
-        switch (rangeTime) {
-
-            case KhorosSearchRange.DAY:
-                startDate.setDate(startDate.getDate() - 1);
-                break;
-
-            case KhorosSearchRange.WEEK:
-                startDate.setDate(startDate.getDate() - 7);
-                break;
-
-            case KhorosSearchRange.MONTH:
-                startDate.setMonth(startDate.getMonth() - 1);
-                break;
-
-            case KhorosSearchRange.YEAR:
-                startDate.setFullYear(startDate.getFullYear() - 1);
-                break;
-
-            default:
-                throw new Error("Invalid Khoros search range: " + rangeTime);
-        }
-
-        const toISO = (d) =>
-            d.toISOString().replace('.000Z', '-00:00');
-
-        query +=
-            "AND post_time > " + toISO(startDate) + " " +
-            "AND post_time < " + toISO(now) + " ";
-    }
-
-    query +=
-        "ORDER BY post_time DESC " +
+        "AND author.id = '" + userId + "' " +
+        "ORDER BY post_time DESC, id DESC " +
         "LIMIT 20";
 
     const url =
@@ -242,6 +182,68 @@ async function SearchKhorosApi(searchText, rangeTime) {
 
     return result?.data?.items ?? [];
 }
+
+
+// Search Khoros V2 for original topics containing the specified
+// phrase, then use those topics to find my replies.  This finds
+// my replies even when I did not use the phrase myself.
+async function SearchKhorosApi(searchText, rangeTime) {
+
+    let query =
+        "SELECT id, view_href, author, subject, body, conversation " +
+        "FROM messages " +
+        "WHERE depth = 0 " +
+        "AND body MATCHES '" + searchText + "' ";
+
+    if (rangeTime != KhorosSearchRange.ALL) {
+
+        const now = new Date();
+        let startDate = new Date(now);
+
+        switch (rangeTime) {
+            case KhorosSearchRange.DAY:
+                startDate.setDate(startDate.getDate() - 1);
+                break;
+            case KhorosSearchRange.WEEK:
+                startDate.setDate(startDate.getDate() - 7);
+                break;
+            case KhorosSearchRange.MONTH:
+                startDate.setMonth(startDate.getMonth() - 1);
+                break;
+            case KhorosSearchRange.YEAR:
+                startDate.setFullYear(startDate.getFullYear() - 1);
+                break;
+            default:
+                throw new Error("Invalid Khoros search range: " + rangeTime);
+        }
+
+        const toISO = (d) =>
+            d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
+
+        query +=
+            "AND post_time > " + toISO(startDate) + " " +
+            "AND post_time < " + toISO(now) + " ";
+    }
+
+    query +=
+        "ORDER BY post_time DESC, id DESC " +
+        "LIMIT 20";
+
+    const url =
+        "https://h30434.www3.hp.com/api/2.0/search?q=" +
+        encodeURIComponent(query);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`Khoros API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    return result?.data?.items ?? [];
+}
+
 
 async function FindMyRepliesToPhrase(searchText, userId, krange) {
 
@@ -265,13 +267,18 @@ async function FindMyRepliesToPhrase(searchText, userId, krange) {
     return results;
 }
 
+
+// Search Khoros V1 for posts/replies authored by me that contain
+// the specified exact phrase.  These results are combined with
+// Khoros V2 results that find my replies to topics where the
+// original poster used the phrase.
 async function SearchKhorosPhraseV1(searchText, userId, rangeTime) {
 
     let url =
         "https://h30434.www3.hp.com/restapi/vc/search/messages" +
         "?phrase=" + encodeURIComponent(searchText) +
         "&author_id=" + encodeURIComponent(userId) +
-        "&include_forums=true";
+        "&include_forums=true&sort_by=date";
 
     if (rangeTime) {
         url += "&dateRangeType=rangeTime" +
@@ -314,10 +321,12 @@ async function SearchKhorosPhraseV1(searchText, userId, rangeTime) {
     return messages;
 }
 
+
+
 async function GetKhorosMessage(messageId) {
 
     const query =
-        "SELECT id, view_href, subject, topic, author, conversation " +
+        "SELECT id, view_href, subject, topic, author, conversation, post_time " +
         "FROM messages " +
         "WHERE id = '" + messageId + "'";
 
@@ -387,6 +396,8 @@ function BuildKhorosAuthorSearch(searchText, userId, searchType, rangeTime) {
     if (rangeTime) {
         url += "&rangeTime=" + encodeURIComponent(rangeTime);
     }
+
+    url += "&sort_by=date";
 
     return url;
 }

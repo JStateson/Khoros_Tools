@@ -71,6 +71,16 @@ function DisplayType1Results(results, container) {
         const div = document.createElement("div");
         div.className = "result";
 
+        // Display the post date first
+        if (message.post_time) {
+            const date = document.createElement("span");
+            date.className = "post-date";
+            date.textContent =
+                `${new Date(message.post_time).toLocaleDateString()}  `;
+
+            div.appendChild(date);
+        }
+
         const link = document.createElement("a");
 
         link.href = message.view_href;
@@ -88,7 +98,6 @@ function DisplayType1Results(results, container) {
         container.appendChild(div);
     }
 }
-
 
 function DisplayType2Results(results, container) {
 
