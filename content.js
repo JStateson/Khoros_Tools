@@ -3,8 +3,6 @@ chrome.runtime.sendMessage({
     action: "contentReady"
 });
 
-
-
 function WaitForSupportGPTButton() {
     return new Promise((resolve) => {
 
