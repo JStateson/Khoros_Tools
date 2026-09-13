@@ -23,15 +23,35 @@
 6. ![alt text](https://stateson.net/images/KhorosTools.png)
 
 
-Explanation of the three search functions
+Explanation of the two search functions
 
 1.	The new Khoros Tools function **Find my phrase or words**
 	1. 	You highlight a phrase such as  and select the **Find my phrase or words**
 	2. You are logged in, as your name is shown top right of display
-	3. Results: You may have 50 threads. Some you originated.  Others you responded to.
+	3. Results: You may have 50 threads. Some you originated, others you responded to.
 	4. If the phrase has quotes such as "Call Of Duty" or 'Call Of Duty' then only exact matches will be found.
 	
-2.	The new Khoros Tools function **Replies this last week** is the same as above but only the last week.
+2.	The Khoros function **Replies this last week** is the same as above but only the last week.
 	
 3.  Use any empty field on a support page to enter your phrase so you can put quotes about it.
 	The support page must show that you are logged in as these search are done with your user id.
+
+
+Explanation of the **Clean Pasted HTML** function
+
+1. Using the mouse, select Google's AI text you want to copy and paste into the Khoros post edit box.
+		Click the **Clean Pasted HTML** button and the text will be cleaned of unfriendly HTML and prohibited citations.
+2. If using Gemini, click the COPY icon and then paste into the Khoros post edit box											.
+        Click the **Clean Pasted HTML** button.  Gemini's estimated completion time will also be removed.
+3. No Images will be copied.  You will need to manually select any images and paste into the Khoros post edit box.
+
+
+Explanation of **Copy Khoros to clipboard** function
+
+1.  This function is used to save Khoros posts to an app that can edit html or markup.
+	1. Select a post and click the edit button.  The post will be displayed in the edit box.
+	2. Using the mouse, select the text you want to copy and click the **Copy Khoros to clipboard** button.
+	3. Bring up, for exmaple, Microsoft Word and paste the text into it and save it.
+	
+2.  This text can be reopened in Word and pasted as a reply to a similar question.
+	 

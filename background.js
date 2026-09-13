@@ -34,6 +34,14 @@ chrome.runtime.onInstalled.addListener(async () => {
         type: "normal",
         contexts: ["all"]
     });
+    /*
+    chrome.contextMenus.create({
+        id: "CleanGemini",
+        title: "Clean Gemini",
+        type: "normal",
+        contexts: ["all"]
+    });
+    */
     chrome.contextMenus.create({
         id: "PutInSpoiler",
         title: "Put selected text into Spoiler",
@@ -696,7 +704,11 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
         "wikipedia.org",
         "intel.com",
         "amd.com",
-        "nvidia.com"
+        "apple.com",
+        "nvidia.com",
+        "ebay.com",
+        "amazon.com",
+        "reddit.com"
     ];
 
     function IsAllowedFootnote(href) {
@@ -785,6 +797,15 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     });
 
     let html = body.innerHTML;
+
+    // ---------------------------------------------------------
+    //2. Remove GEMINI estimated time to complete
+    // ---------------------------------------------------------
+    html = html.replace(
+        /\s*\d+(?:[-–]\d+)?\s*(?:min(?:ute)?s?|hours?|hrs?)(?:\s+\d+\s*(?:min(?:ute)?s?))?\./gi,
+        ""
+    );
+
 
     // ---------------------------------------------------------
     // 3. Remove HTML comments
@@ -931,295 +952,19 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     );
 }
 
-function xCleanPastedHtml() { // designed for Google Docs to Khoros copy/paste but should work for other sources as well
-
-    function ExtractFootnotes(html) {
-
-        const temp = document.createElement("div");
-        temp.innerHTML = html;
-
-        const citationUrls = [];
-
-        const allowedDomains = [
-            "microsoft.com",
-            "hp.com",
-            "youtube.com",
-            "wikipedia.org",
-            "intel.com",
-            "amd.com",
-            "nvidia.com"
-        ];
-
-        // ---------------------------------------------------------
-        // Find numbered footnotes working backwards
-        // ---------------------------------------------------------
-
-        const elements = [...temp.querySelectorAll("div")];
-
-        let footnoteDivs = [];
-        let expectedNumber = null;
-
-        for (let i = elements.length - 1; i >= 0; i--) {
-
-            const div = elements[i];
-            const text = div.textContent.trim();
-
-            const match = text.match(/^\[(\d+)\]/);
-
-            if (!match) {
-
-                if (footnoteDivs.length > 0)
-                    break;
-
-                continue;
-            }
-
-            const number = parseInt(match[1], 10);
-
-            if (expectedNumber === null)
-                expectedNumber = number;
-
-            if (number !== expectedNumber)
-                break;
-
-            if (!div.querySelector("a[href]"))
-                break;
-
-            footnoteDivs.unshift(div);
-            expectedNumber--;
-        }
-
-        // ---------------------------------------------------------
-        // Extract allowed URLs and remove footnotes
-        // ---------------------------------------------------------
-
-        footnoteDivs.forEach(div => {
-
-            div.querySelectorAll("a[href]").forEach(a => {
-
-                const href = a.getAttribute("href");
-
-                if (!href)
-                    return;
-
-                const hostname = new URL(href).hostname.toLowerCase();
-
-                if (allowedDomains.some(domain =>
-                    hostname === domain ||
-                    hostname.endsWith("." + domain)
-                )) {
-
-                    // Remove Google's text-fragment portion
-                    const cleanUrl = href.split("#:~:text=")[0];
-
-                    if (!citationUrls.includes(cleanUrl))
-                        citationUrls.push(cleanUrl);
-                }
-            });
-
-            div.remove();
-        });
-
-        // ---------------------------------------------------------
-        // Build citation spoiler
-        // ---------------------------------------------------------
-
-        let citationHtml = "";
-
-        if (citationUrls.length > 0) {
-
-            citationHtml =
-                "<div class='lia-spoiler-container-editor'>" +
-                "<b>Do not call any phone numbers listed on any website or video below, unless it is an official HP site</b><br><br>" +
-                citationUrls.map(url =>
-                    `<a href="${url}" target="_blank" rel="noopener">${url}</a>`
-                ).join("<br><br>") +
-                "</div>";
-        }
-
-        return {
-            html: temp.innerHTML,
-            citationHtml: citationHtml
-        };
-    }
+function CleanGeminiHtml() { // designed for Google Docs to Khoros copy/paste but should work for other sources as well
 
 
     if (document.body.id !== "tinymce")
         return;
 
     const body = document.body;
-
-    // ---------------------------------------------------------
-    // 1. Remove Google citation spans containing only numbers
-    // ---------------------------------------------------------
-    body.querySelectorAll("span").forEach(span => {
-
-        const links = span.querySelectorAll("a");
-
-        if (links.length > 0 &&
-            [...links].every(a => /^\d+$/.test(a.textContent.trim()))) {
-            span.remove();
-        }
-    });
-
     let html = body.innerHTML;
-
-
-    // Extract Google footnotes before other cleanup destroys their structure
-    const result = ExtractFootnotes(html);
-
-    html = result.html;
-    const citationHtml = result.citationHtml;
-
-
-    // ---------------------------------------------------------
-    // 2. Remove citations already converted by Khoros
-    // ---------------------------------------------------------
     html = html.replace(
-        /\[\s*\d+(?:\s*,\s*\d+)*\s*\]/g,
+        /\s*\d+(?:[-–]\d+)?\s*(?:min(?:ute)?s?|hours?|hrs?)(?:\s+\d+\s*(?:min(?:ute)?s?))?\./gi,
         ""
     );
-
-    // ---------------------------------------------------------
-    // 3. Remove HTML comments
-    // ---------------------------------------------------------
-    html = html.replace(
-        /<!--[\s\S]*?-->/g,
-        ""
-    );
-
-    // ---------------------------------------------------------
-    // 4. Fix <strong>...</b> produced by Google
-    // ---------------------------------------------------------
-    html = html.replace(
-        /(<strong\b[^>]*>.*?)(<\/b>)/gis,
-        "$1</strong>"
-    );
-
-    // ---------------------------------------------------------
-    // 5. Remove Google wrapper elements but keep contents
-    // ---------------------------------------------------------
-
-    /*
-
-    html = html.replace(
-        /<div\b[^>]*>/gi,
-        ""
-    );
-
-    html = html.replace(
-        /<\/div>/gi,
-        "<br>"
-    );
-
-    */
-
-    // removed the above two and trying the below to fix double space problems
-
-    html = html.replace(
-        /<\/?div\b[^>]*>/gi,
-        ""
-    );
-
-
-    html = html.replace(
-        /<\/?(?:span|mark)\b[^>]*>/gi,
-        ""
-    );
-
-    // ---------------------------------------------------------
-    // 6. Remove Google's attributes from useful tags
-    // ---------------------------------------------------------
-    html = html.replace(
-        /<ul\b[^>]*>/gi,
-        "<ul>"
-    );
-
-    html = html.replace(
-        /<ol\b[^>]*>/gi,
-        "<ol>"
-    );
-
-    html = html.replace(
-        /<li\b[^>]*>/gi,
-        "<li>"
-    );
-
-    html = html.replace(
-        /<strong\b[^>]*>/gi,
-        "<strong>"
-    );
-
-    html = html.replace(
-        /<h2\b[^>]*>/gi,
-        "<h2>"
-    );
-
-    // ---------------------------------------------------------
-    // 7. Remove <code> tags but keep their contents
-    // ---------------------------------------------------------
-    html = html.replace(
-        /<\/?code\b[^>]*>/gi,
-        ""
-    );
-
-    // ---------------------------------------------------------
-    // 8. Remove Khoros-incompatible data-sfc-root attributes
-    // ---------------------------------------------------------
-    html = html.replace(/<em\b[^>]*>/gi, "<em>");
-
-    html += citationHtml;
-
     body.innerHTML = html;
-
-    /*
-        console.log("AFTER innerHTML:");
-        console.log(body.innerHTML);
-    
-        body.querySelectorAll("li").forEach((li, i) => {
-            console.log(
-                "LI " + i,
-                "HTML:", li.outerHTML,
-                "PARENT:", li.parentElement.outerHTML
-            );
-        });
-    */
-
-    // switch to DOM manipulation for the rest of the cleanup
-    body.querySelectorAll("a").forEach(a => {
-
-        const href = a.getAttribute("href");
-        if (!href) return;
-
-        // Remove every attribute
-        [...a.attributes].forEach(attr => a.removeAttribute(attr.name));
-
-        // Add back only what you want
-        a.href = href;
-        a.target = "_blank";
-        a.rel = "noopener";
-    });
-
-    // ---------------------------------------------------------
-    // Remove empty bullet/list items
-    // ---------------------------------------------------------
-
-    body.querySelectorAll("li").forEach(li => {
-
-        // Remove whitespace, including &nbsp;
-        if (li.textContent.replace(/\u00a0/g, "").trim() === "") {
-            li.remove();
-        }
-    });
-
-    // Remove lists that are now empty
-    body.querySelectorAll("ul, ol").forEach(list => {
-
-        if (list.querySelectorAll(":scope > li").length === 0) {
-            list.remove();
-        }
-    });
-
 
 
     // Tell TinyMCE/Khoros that the content has changed
@@ -1507,6 +1252,18 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
 
 
     }
+
+    if (item.menuItemId == "CleanGemini") {
+        chrome.scripting.executeScript({
+            target: {
+                tabId: tab.id,
+                allFrames: true
+            },
+            func: CleanGeminiHtml
+        });
+        return;
+    }
+
 
     if (item.menuItemId == "CitRem") {
         chrome.scripting.executeScript({
