@@ -903,6 +903,11 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     // ---------------------------------------------------------
     html = html.replace(/<em\b[^>]*>/gi, "<em>");
 
+    // 9. remove chatgpt references
+
+    html = html.replace("?utm_source=chatgpt.com", "");
+
+
     body.innerHTML = html;
 
     // switch to DOM manipulation for the rest of the cleanup
