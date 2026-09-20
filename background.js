@@ -34,15 +34,7 @@ chrome.runtime.onInstalled.addListener(async () => {
         type: "normal",
         contexts: ["all"]
     });
-    /*
-    chrome.contextMenus.create({
-        id: "CleanGemini",
-        title: "Clean Gemini",
-        type: "normal",
-        contexts: ["all"]
-    });
-    */
-    chrome.contextMenus.create({
+        chrome.contextMenus.create({
         id: "PutInSpoiler",
         title: "Put selected text into Spoiler",
         type: "normal",
@@ -72,11 +64,10 @@ chrome.runtime.onInstalled.addListener(async () => {
         contexts: ['selection']
     });
     chrome.contextMenus.create({
-        id: "separator0",
+        id: "separator2",
         type: "separator",
         contexts: ["all"]
     });
-
     chrome.contextMenus.create({
         id: "StartSupportGPT",
         title: "Start Support GPT",
@@ -92,6 +83,17 @@ chrome.runtime.onInstalled.addListener(async () => {
     chrome.contextMenus.create({
         id: "StopSupportGPT",
         title: "Stop Support GPT",
+        type: "normal",
+        contexts: ["all"]
+    });
+    chrome.contextMenus.create({
+        id: "separator1",
+        type: "separator",
+        contexts: ["all"]
+    });
+    chrome.contextMenus.create({
+        id: "ExpandDrivers",
+        title: "Expand All Drives",
         type: "normal",
         contexts: ["all"]
     });
@@ -693,6 +695,18 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
 
     const body = document.body;
 
+    // Check for Google's "-bogus" markup before cleaning
+    const pos = html.indexOf("-bogus");
+
+    if (pos >= 0) {
+        alert(
+            html.substring(
+                Math.max(0, pos - 500),
+                Math.min(html.length, pos + 500)
+            )
+        );
+    }
+
     // ---------------------------------------------------------
     // 1. Clean Google citation spans
     //    Keep only links from approved domains
@@ -911,20 +925,26 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     body.innerHTML = html;
 
     // switch to DOM manipulation for the rest of the cleanup
+
     body.querySelectorAll("a").forEach(a => {
 
         const href = a.getAttribute("href");
         if (!href) return;
 
-        // Remove every attribute
+        // Preserve the original link
         [...a.attributes].forEach(attr => a.removeAttribute(attr.name));
 
-        // Add back only what you want
         a.href = href;
         a.target = "_blank";
         a.rel = "noopener";
-    });
 
+        // Change numeric link text to ref_1, ref_2, etc.
+        const text = a.textContent.trim();
+
+        if (/^\d+$/.test(text)) {
+            a.textContent = "ref_" + text;
+        }
+    });
     // ---------------------------------------------------------
     // Remove empty bullet/list items
     // ---------------------------------------------------------
@@ -945,32 +965,12 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
         }
     });
 
-
-
-    // Tell TinyMCE/Khoros that the content has changed
-    body.dispatchEvent(
-        new InputEvent("input", { bubbles: true })
-    );
-
-    body.dispatchEvent(
-        new Event("change", { bubbles: true })
-    );
-}
-
-function CleanGeminiHtml() { // designed for Google Docs to Khoros copy/paste but should work for other sources as well
-
-
-    if (document.body.id !== "tinymce")
-        return;
-
-    const body = document.body;
-    let html = body.innerHTML;
-    html = html.replace(
-        /\s*\d+(?:[-–]\d+)?\s*(?:min(?:ute)?s?|hours?|hrs?)(?:\s+\d+\s*(?:min(?:ute)?s?))?\./gi,
-        ""
-    );
-    body.innerHTML = html;
-
+    /*  THIS WAS PUT IN BY HP AND IS NOT NEEDED ANYMORE, BUT MAYBE I WILL NEED IT AGAIN LATER
+    // Remove any scripts left in pasted Google HTML
+    body.querySelectorAll("script").forEach(script => {
+        script.remove();
+    });
+    */
 
     // Tell TinyMCE/Khoros that the content has changed
     body.dispatchEvent(
@@ -982,6 +982,40 @@ function CleanGeminiHtml() { // designed for Google Docs to Khoros copy/paste bu
     );
 }
 
+async function ExpandDrivers() {
+
+    const rows = document.querySelectorAll(
+        'tr.pfw-driver-row:not(.expanded)'
+    );
+
+    for (const row of rows) {
+
+        const arrow = row.querySelector('.pfw-driver-row-toggle');
+
+        if (!arrow)
+            continue;
+
+        arrow.dispatchEvent(new MouseEvent('mouseover', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        }));
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Check again because the page can modify the row
+        if (!row.classList.contains('expanded')) {
+
+            arrow.dispatchEvent(new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+            }));
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+}
 
 function FixSpoilers() {
 
@@ -1258,13 +1292,12 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
 
     }
 
-    if (item.menuItemId == "CleanGemini") {
+    if (item.menuItemId == "ExpandDrivers") {
         chrome.scripting.executeScript({
             target: {
-                tabId: tab.id,
-                allFrames: true
+                tabId: tab.id //,                allFrames: true
             },
-            func: CleanGeminiHtml
+            func: ExpandDrivers
         });
         return;
     }
