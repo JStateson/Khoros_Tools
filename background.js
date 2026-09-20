@@ -93,7 +93,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     });
     chrome.contextMenus.create({
         id: "ExpandDrivers",
-        title: "Expand All Drives",
+        title: "Expand All Drivers",
         type: "normal",
         contexts: ["all"]
     });
@@ -984,11 +984,15 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
 
 async function ExpandDrivers() {
 
-    const rows = document.querySelectorAll(
+    // =========================================================
+    // New HP driver page
+    // =========================================================
+
+    const newRows = document.querySelectorAll(
         'tr.pfw-driver-row:not(.expanded)'
     );
 
-    for (const row of rows) {
+    for (const row of newRows) {
 
         const arrow = row.querySelector('.pfw-driver-row-toggle');
 
@@ -1003,10 +1007,41 @@ async function ExpandDrivers() {
 
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Check again because the page can modify the row
         if (!row.classList.contains('expanded')) {
 
             arrow.dispatchEvent(new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+            }));
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+
+
+    // =========================================================
+    // Old HP driver page
+    // =========================================================
+
+    const oldIcons = document.querySelectorAll(
+        'img.icon[src*="PlusIcon.svg"]'
+    );
+
+    for (const icon of oldIcons) {
+
+        icon.dispatchEvent(new MouseEvent('mouseover', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        }));
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // PlusIcon means it is still closed
+        if (icon.src.includes('PlusIcon.svg')) {
+
+            icon.dispatchEvent(new MouseEvent('click', {
                 bubbles: true,
                 cancelable: true,
                 view: window

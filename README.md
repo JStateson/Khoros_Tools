@@ -11,7 +11,8 @@
 6. Instead of Copy and Paste, if the Google COPY icon is selected then all approved footnotes are put into a spoiler.
 7. A demo video showing the spoiler feature is [here](https://stateson.net/images/DemoPutCleanedIntoSpoiler.mp4)
 8. Demo video of the HP SupportGPT [is here](https://stateson.net/images/DemoHPsupportGPT.mp4).
-9. **WARNING** please review **ISSUES** before installing the extension.  Feel free to create an issue is there is a problem.
+9. You can expand all drivers and software on a HP support page by clicking the **Expand All Drivers** button.  This is useful when searching for a phrase.  Demo video [is here](https://stateson.net/images/DemoExpandAll.mp4)]
+10. **WARNING** please review **ISSUES** before installing the extension.  Feel free to create an issue is there is a problem.
 
 ## To install this extension
 
