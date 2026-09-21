@@ -803,6 +803,8 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
 
     let html = body.innerHTML;
 
+    /* not going to check on this since problem was <br data-mce-bogus="1">
+    and this is not a google problem it seems, but leaving it here in case I need it again
     // Check for Google's "-bogus" markup before cleaning
     const pos = html.indexOf("-bogus");
 
@@ -814,7 +816,7 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
             )
         );
     }
-
+    */
     // ---------------------------------------------------------
     //2. Remove GEMINI estimated time to complete
     // ---------------------------------------------------------
