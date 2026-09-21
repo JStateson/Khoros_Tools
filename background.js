@@ -695,17 +695,6 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
 
     const body = document.body;
 
-    // Check for Google's "-bogus" markup before cleaning
-    const pos = html.indexOf("-bogus");
-
-    if (pos >= 0) {
-        alert(
-            html.substring(
-                Math.max(0, pos - 500),
-                Math.min(html.length, pos + 500)
-            )
-        );
-    }
 
     // ---------------------------------------------------------
     // 1. Clean Google citation spans
@@ -811,6 +800,18 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     });
 
     let html = body.innerHTML;
+
+    // Check for Google's "-bogus" markup before cleaning
+    const pos = html.indexOf("-bogus");
+
+    if (pos >= 0) {
+        alert(
+            html.substring(
+                Math.max(0, pos - 500),
+                Math.min(html.length, pos + 500)
+            )
+        );
+    }
 
     // ---------------------------------------------------------
     //2. Remove GEMINI estimated time to complete
