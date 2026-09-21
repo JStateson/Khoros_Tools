@@ -387,31 +387,33 @@ function BuildKhorosAuthorSearch(searchText, userId, searchType, rangeTime) {
         url += "?filter=authorId,includeForums";
     }
 
-
     if (searchType === 2) {
         // Find these words
-        const encodedSearch = encodeURIComponent(searchText).replace(/%20/g, "%2B");
+        const encodedSearch =
+            encodeURIComponent(searchText).replace(/%20/g, "%2B");
 
         url += "&q=" + encodedSearch;
     }
+
     if (searchType === 1) {
         // Find this exact phrase
         url += "&phrase=" + encodeURIComponent(searchText);
     }
 
+    // Sort newest topic posts first
+    url += "&sort_by=-topicPostDate";
+
     url +=
         "&author_id=" + encodeURIComponent(userId) +
-        "&include_forums=true";
+        "&include_forums=true" +
+        "&collapse_discussion=true";
 
     if (rangeTime) {
         url += "&rangeTime=" + encodeURIComponent(rangeTime);
     }
 
-    url += "&sort_by=date";
-
     return url;
 }
-
 const KhorosSearchRange = {
     ALL: null,
     DAY: "24h",
@@ -1242,7 +1244,7 @@ chrome.contextMenus.onClicked.addListener(async (item, tab) => {
                 });
                 return;
             }
-
+            //not used anymore, but leaving it here in case I want to use it again
             results = await SearchMyPosts(searchText, userId);
             
             //console.log("My matching replies:", results);
