@@ -713,7 +713,8 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
         "nvidia.com",
         "ebay.com",
         "amazon.com",
-        "reddit.com"
+        "reddit.com",
+        "github.com"
     ];
 
     function IsAllowedFootnote(href) {
