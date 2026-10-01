@@ -804,20 +804,7 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
 
     let html = body.innerHTML;
 
-    /* not going to check on this since problem was <br data-mce-bogus="1">
-    and this is not a google problem it seems, but leaving it here in case I need it again
-    // Check for Google's "-bogus" markup before cleaning
-    const pos = html.indexOf("-bogus");
 
-    if (pos >= 0) {
-        alert(
-            html.substring(
-                Math.max(0, pos - 500),
-                Math.min(html.length, pos + 500)
-            )
-        );
-    }
-    */
     // ---------------------------------------------------------
     //2. Remove GEMINI estimated time to complete
     // ---------------------------------------------------------
@@ -844,22 +831,12 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
     );
 
     // ---------------------------------------------------------
-    // 5. Remove Google wrapper elements but keep contents
+    // 5. Convert Google level-3 headings to real <h3> elements
     // ---------------------------------------------------------
-
-    /*
-
     html = html.replace(
-        /<div\b[^>]*>/gi,
-        ""
+        /<div\b(?=[^>]*\brole=["']heading["'])(?=[^>]*\baria-level=["']3["'])[^>]*>([\s\S]*?)<\/div>/gi,
+        "<h3>$1</h3>"
     );
-
-    html = html.replace(
-        /<\/div>/gi,
-        "<br>"
-    );
-
-    */
 
     // ---------------------------------------------------------
     // Preserve paragraph breaks between Google wrapper <div>s
@@ -869,8 +846,7 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
         "<br><br>"
     );
 
-    // removed the above two that are commented out and trying the below to fix double space problems
-
+    // Remove remaining Google wrapper divs
     html = html.replace(
         /<\/?div\b[^>]*>/gi,
         ""
@@ -971,12 +947,6 @@ function CleanPastedHtml() { // designed for Google Docs to Khoros copy/paste bu
         }
     });
 
-    /*  THIS WAS PUT IN BY HP AND IS NOT NEEDED ANYMORE, BUT MAYBE I WILL NEED IT AGAIN LATER
-    // Remove any scripts left in pasted Google HTML
-    body.querySelectorAll("script").forEach(script => {
-        script.remove();
-    });
-    */
 
     // Tell TinyMCE/Khoros that the content has changed
     body.dispatchEvent(
